@@ -1,0 +1,154 @@
+  CentOS7.0安装Nginx 1.9.9
+复制代码
+
+ 一、安装准备
+
+首先由于nginx的一些模块依赖一些lib库，所以在安装nginx之前，必须先安装这些lib库，这些依赖库主要有g++、gcc、openssl-devel、pcre-devel和zlib-devel 所以执行如下命令安装
+
+    $   yum install -y gcc-c++ pcre pcre-devel zlib zlib-devel openssl openssl--devel  
+
+ 
+二、安装Nginx
+
+安装之前，最好检查一下是否已经安装有nginx
+
+    $   find -name nginx  
+
+如果系统已经安装了nginx，那么就先卸载
+
+    $   yum remove nginx  
+
+首先进入/usr/local目录
+
+    $   cd /usr/local  
+
+从官网下载最新版的nginx
+
+    $   curl -OL http://nginx.org/download/nginx-1.9.9.tar.gz
+
+解压nginx压缩包
+
+    $   tar -zxvf nginx-1.9.9.tar.gz 
+
+会产生一个nginx-1.9.9 目录，这时进入nginx-1.9.9目录
+
+    $   cd  nginx-1.9.9  
+
+接下来安装，使用--prefix参数指定nginx安装的目录,make、make install安装
+
+    $   ./configure  $默认安装在/usr/local/nginx   
+    $   make  
+    $   make install      
+
+
+如果没有报错，顺利完成后，最好看一下nginx的安装目录
+
+    $   whereis nginx  
+
+
+安装完毕后，进入安装后目录（/usr/local/nginx）便可以启动或停止它了。
+
+到此，使用CentOS安装nginx已经完成了，其实看看还是蛮简单的。
+
+启动、停止nginx
+
+cd /usr/local/nginx/sbin/
+./nginx 
+./nginx -s stop
+./nginx -s quit
+./nginx -s reload
+
+    ./nginx -s quit:此方式停止步骤是待nginx进程处理任务完毕进行停止。
+    ./nginx -s stop:此方式相当于先查出nginx进程id再使用kill命令强制杀掉进程。
+
+查询nginx进程：
+
+ps aux|grep nginx
+
+重启 nginx
+
+1.先停止再启动（推荐）：
+对 nginx 进行重启相当于先停止再启动，即先执行停止命令再执行启动命令。如下：
+
+./nginx -s quit
+./nginx
+
+2.重新加载配置文件：
+当 ngin x的配置文件 nginx.conf 修改后，要想让配置生效需要重启 nginx，使用-s reload不用先停止 ngin x再启动 nginx 即可将配置信息在 nginx 中生效，如下：
+./nginx -s reload
+
+防火墙设置
+# 开放nginx服务端口80
+## 添加
+firewall-cmd --zone=public --add-port=80/tcp --permanent
+firewall-cmd --reload
+
+启动成功后，在浏览器可以看到这样的页面：
+
+nginx-welcome.png
+开机自启动
+
+即在rc.local增加启动代码就可以了。
+
+vi /etc/rc.local
+
+增加一行 /usr/local/nginx/sbin/nginx
+设置执行权限：
+chmod 755 rc.local
+nginx-rclocal.png
+到这里，nginx就安装完毕了，启动、停止、重启操作也都完成了，当然，你也可以添加为系统服务
+在这里我是用源码编译安装的，所以要手动创建nginx.service服务文件。
+开机没有登陆情况下就能运行的程序，存在系统服务（system）里，即：/lib/systemd/system/
+1.在系统服务目录里创建nginx.service文件
+echo "
+[Unit]
+Description=nginx
+After=network.target
+
+[Service]
+Type=forking
+ExecStart=/usr/local/nginx/sbin/nginx
+ExecReload=/usr/local/nginx/sbin/nginx -s reload
+ExecStop=/usr/local/nginx/sbin/nginx -s quit
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
+
+" > /lib/systemd/system/nginx.service
+
+[Unit]:服务的说明
+Description:描述服务
+After:描述服务类别
+[Service]服务运行参数的设置
+Type=forking是后台运行的形式
+ExecStart为服务的具体运行命令
+ExecReload为重启命令
+ExecStop为停止命令
+PrivateTmp=True表示给服务分配独立的临时空间
+
+注意：[Service]的启动、重启、停止命令全部要求使用绝对路径
+[Install]服务安装的相关设置，可设置为多用户
+
+#以754的权限保存在目录：/lib/systemd/system  
+#chmod 754 /lib/systemd/system/nginx.service
+#chmod -x /lib/systemd/system/nginx.service
+
+启动nginx服务：
+systemctl start nginx.service
+设置开机自启动：
+systemctl enable nginx.service
+停止开机自启动：
+systemctl disable nginx.service
+查看服务当前状态：
+systemctl status nginx.service
+重新启动服务：
+systemctl restart nginx.service
+查看所有已启动的服务：
+systemctl list-units --type=service
+
+
+
+
+
+
